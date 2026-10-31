@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Desktop Audio Russian Translator</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 500: '#6366f1', 600: '#4f46e5' }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col justify-between selection:bg-indigo-500 selection:text-white">
+
+    <!-- Header -->
+    <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50">
+        <div class="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-indigo-600 text-white p-2.5 rounded-xl shadow-lg shadow-indigo-500/30">
+                    <i class="fa-solid fa-microphone-lines text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg tracking-tight">AudioRus <span class="text-xs bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded-full border border-indigo-500/30">Desktop Audio</span></h1>
+                    <p class="text-xs text-slate-400">Live System Audio & Microphone Translator</p>
+                </div>
+            </div>
+            <div id="statusBadge" class="flex items-center space-x-2 text-xs text-slate-400 bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700">
+                <span id="statusDot" class="w-2 h-2 rounded-full bg-slate-500"></span>
+                <span id="statusText">Ready to Listen</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-5xl mx-auto px-4 py-8 w-full flex-grow space-y-6">
+        
+        <!-- Audio Capture Controls Banner -->
+        <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
+            <div class="flex items-center space-x-3 text-sm text-slate-300">
+                <div class="bg-indigo-500/10 text-indigo-400 p-3 rounded-xl border border-indigo-500/20">
+                    <i class="fa-solid fa-desktop text-lg"></i>
+                </div>
+                <div>
+                    <p class="font-semibold text-slate-200">Capture Desktop or Tab Audio</p>
+                    <p class="text-xs text-slate-400">Select "Tab" or "Entire Screen" & check <strong class="text-slate-300">"Share audio"</strong> in the browser prompt.</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-3 w-full sm:w-auto">
+                <button id="toggleAudioBtn" onclick="toggleAudioCapture()" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs px-5 py-2.5 rounded-xl shadow-lg shadow-indigo-600/30 transition flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-play"></i>
+                    <span id="btnText">Start Listening</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Translation Card Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            <!-- Source Audio Transcription Box -->
+            <div class="bg-slate-800/60 border border-slate-700/80 rounded-2xl p-4 flex flex-col shadow-xl backdrop-blur">
+                <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-700/60">
+                    <div class="flex items-center space-x-2">
+                        <span class="text-xs font-semibold uppercase tracking-wider text-indigo-400 bg-indigo-500/10 px-2.5 py-1 rounded-md border border-indigo-500/20">Live Audio Input</span>
+                        <span class="text-xs text-slate-400" id="audioLangTag">English (Speech)</span>
+                    </div>
+                    <button onclick="clearTranscript()" title="Clear" class="p-2 text-slate-400 hover:text-red-400 hover:bg-slate-700 rounded-lg transition"><i class="fa-solid fa-trash-can"></i></button>
+                </div>
+                <div id="sourceTranscript" class="w-full flex-grow text-slate-200 text-base leading-relaxed min-h-[180px] max-h-[300px] overflow-y-auto whitespace-pre-wrap break-words pr-2">
+                    <span class="text-slate-500 italic">Click "Start Listening", choose your audio source (enable "Share system audio"), and start playing audio or speaking...</span>
+                </div>
+                <div class="pt-3 mt-auto border-t border-slate-700/40 flex justify-between items-center text-xs text-slate-400">
+                    <span id="speechStatus">Speech engine idle</span>
+                    <button onclick="copyToClipboard('sourceTranscript')" class="hover:text-white flex items-center space-x-1"><i class="fa-regular fa-copy"></i> <span>Copy transcript</span></button>
+                </div>
+            </div>
+
+            <!-- Russian Target Translation Box -->
+            <div class="bg-slate-800/60 border border-slate-700/80 rounded-2xl p-4 flex flex-col shadow-xl backdrop-blur">
+                <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-700/60">
+                    <div class="flex items-center space-x-2">
+                        <span class="text-xs font-semibold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/20">Russian Translation</span>
+                        <div id="loader" class="hidden flex items-center space-x-1.5 text-xs text-indigo-400">
+                            <i class="fa-solid fa-spinner animate-spin"></i>
+                            <span>Translating...</span>
+                        </div>
+                    </div>
+                    <button onclick="speakRussian()" title="Listen to Russian" class="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"><i class="fa-solid fa-volume-high"></i></button>
+                </div>
+                <div id="targetText" class="w-full flex-grow text-slate-100 text-base leading-relaxed min-h-[180px] max-h-[300px] overflow-y-auto select-all whitespace-pre-wrap break-words pr-2">
+                    <span class="text-slate-500">Live Russian translation will appear here...</span>
+                </div>
+                <div class="pt-3 mt-auto border-t border-slate-700/40 flex justify-between items-center text-xs text-slate-400">
+                    <span id="wordCount">0 words</span>
+                    <button onclick="copyToClipboard('targetText')" class="hover:text-white flex items-center space-x-1"><i class="fa-regular fa-copy"></i> <span>Copy translation</span></button>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-800 bg-slate-900/50 py-4 text-center text-xs text-slate-500">
+        <p>Built with Web Speech API & MyMemory Translation • Ready for GitHub Pages</p>
+    </footer>
+
+    <!-- App Logic Script -->
+    <script>
+        let mediaStream = null;
+        let audioContext = null;
+        let recognition = null;
+        let isListening = false;
+        let lastTranscribed = "";
+
+        // Check for Web Speech API support
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+        function toggleAudioCapture() {
+            if (!isListening) {
+                startAudioCapture();
+            } else {
+                stopAudioCapture();
+            }
+        }
+
+        async function startAudioCapture() {
+            if (!SpeechRecognition) {
+                alert("Your browser does not support Speech Recognition. Please use Google Chrome, Microsoft Edge, or Brave.");
+                return;
+            }
+
+            try {
+                // Request screen/tab sharing with system audio capture
+                mediaStream = await navigator.mediaDevices.getDisplayMedia({
+                    video: true, // required by browser specs for getDisplayMedia
+                    audio: {
+                        echoCancellation: false,
+                        noiseSuppression: false,
+                        autoGainControl: false
+                    }
+                });
+
+                // Route audio stream into audio context to prevent feedback loop
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const sourceNode = audioContext.createMediaStreamSource(mediaStream);
+                const destination = audioContext.destination;
+                // Mute destination so it doesn't echo back loudly out of speakers if necessary, or let it play
+                // sourceNode.connect(destination); // Uncomment if you want to hear the audio while translating
+
+                // Handle user stopping stream directly from browser UI bar
+                mediaStream.getVideoTracks()[0].onended = () => {
+                    stopAudioCapture();
+                };
+
+                initSpeechRecognition();
+                isListening = true;
+                updateUIState(true);
+
+            } catch (err) {
+                console.error("Error capturing audio:", err);
+                alert("Audio capture was canceled or failed. Make sure to check 'Share audio' when prompted.");
+                stopAudioCapture();
+            }
+        }
+
+        function initSpeechRecognition() {
+            recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = 'en-US';
+
+            let finalTranscript = "";
+
+            recognition.onresult = (event) => {
+                let interim = "";
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        finalTranscript += event.results[i][0].transcript + " ";
+                    } else {
+                        interim += event.results[i][0].transcript;
+                    }
+                }
+
+                const fullText = (finalTranscript + interim).trim();
+                if (fullText) {
+                    const transcriptDiv = document.getElementById('sourceTranscript');
+                    if (transcriptDiv.innerText.includes('Click "Start Listening"')) {
+                        transcriptDiv.innerText = "";
+                    }
+                    transcriptDiv.innerText = fullText;
+                    transcriptDiv.scrollTop = transcriptDiv.scrollHeight;
+
+                    if (fullText !== lastTranscribed) {
+                        lastTranscribed = fullText;
+                        translateToRussian(fullText);
+                    }
+                }
+            };
+
+            recognition.onerror = (event) => {
+                console.warn("Speech recognition error:", event.error);
+                document.getElementById('speechStatus').innerText = `Speech status: ${event.error}`;
+            };
+
+            recognition.onend = () => {
+                if (isListening) {
+                    try {
+                        recognition.start(); // Restart if session times out naturally
+                    } catch(e) {
+                        console.log(e);
+                    }
+                }
+            };
+
+            recognition.start();
+            document.getElementById('speechStatus').innerText = "Listening to audio stream...";
+        }
+
+        function stopAudioCapture() {
+            isListening = false;
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+                mediaStream = null;
+            }
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
+            }
+            if (recognition) {
+                recognition.stop();
+                recognition = null;
+            }
+            updateUIState(false);
+        }
+
+        function updateUIState(active) {
+            const btn = document.getElementById('toggleAudioBtn');
+            const btnText = document.getElementById('btnText');
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+            const speechStatus = document.getElementById('speechStatus');
+
+            if (active) {
+                btn.className = "w-full sm:w-auto bg-red-600 hover:bg-red-500 text-white font-medium text-xs px-5 py-2.5 rounded-xl shadow-lg shadow-red-600/30 transition flex items-center justify-center space-x-2";
+                btn.innerHTML = '<i class="fa-solid fa-stop"></i><span>Stop Listening</span>';
+                statusDot.className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
+                statusText.innerText = "Live Audio Active";
+                speechStatus.innerText = "Listening active";
+            } else {
+                btn.className = "w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs px-5 py-2.5 rounded-xl shadow-lg shadow-indigo-600/30 transition flex items-center justify-center space-x-2";
+                btn.innerHTML = '<i class="fa-solid fa-play"></i><span>Start Listening</span>';
+                statusDot.className = "w-2 h-2 rounded-full bg-slate-500";
+                statusText.innerText = "Ready to Listen";
+                speechStatus.innerText = "Speech engine idle";
+            }
+        }
+
+        async function translateToRussian(text) {
+            const loader = document.getElementById('loader');
+            loader.classList.remove('hidden');
+
+            const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|ru`;
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                loader.classList.add('hidden');
+
+                if (data && data.responseData) {
+                    let translated = data.responseData.translatedText;
+                    const targetDiv = document.getElementById('targetText');
+                    targetDiv.innerText = translated;
+                    targetDiv.scrollTop = targetDiv.scrollHeight;
+
+                    const words = translated.trim() ? translated.trim().split(/\s+/).length : 0;
+                    document.getElementById('wordCount').innerText = `${words} words`;
+                }
+            } catch (error) {
+                console.error('Translation error:', error);
+                loader.classList.add('hidden');
+            }
+        }
+
+        function clearTranscript() {
+            document.getElementById('sourceTranscript').innerHTML = '<span class="text-slate-500 italic">Listening session cleared...</span>';
+            document.getElementById('targetText').innerHTML = '<span class="text-slate-500">Live Russian translation will appear here...</span>';
+            document.getElementById('wordCount').innerText = '0 words';
+            lastTranscribed = "";
+        }
+
+        function copyToClipboard(elementId) {
+            const textToCopy = document.getElementById(elementId).innerText;
+            if (!textToCopy || textToCopy.includes('Click "Start Listening"') || textToCopy.includes('Live Russian translation')) return;
+
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                alert('Copied to clipboard!');
+            });
+        }
+
+        function speakRussian() {
+            const text = document.getElementById('targetText').innerText;
+            if (!text || text.includes('Live Russian translation')) return;
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'ru-RU';
+            window.speechSynthesis.speak(utterance);
+        }
+    </script>
+</body>
+</html>
