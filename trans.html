@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live Desktop Audio Russian Translator</title>
+    <title>Live Audio & Mic Russian Translator</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -28,11 +28,11 @@
         <div class="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
             <div class="flex items-center space-x-3">
                 <div class="bg-indigo-600 text-white p-2.5 rounded-xl shadow-lg shadow-indigo-500/30">
-                    <i class="fa-solid fa-microphone-lines text-xl"></i>
+                    <i class="fa-solid fa-headset text-xl"></i>
                 </div>
                 <div>
-                    <h1 class="font-bold text-lg tracking-tight">AudioRus <span class="text-xs bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded-full border border-indigo-500/30">Desktop Audio</span></h1>
-                    <p class="text-xs text-slate-400">Live System Audio & Microphone Translator</p>
+                    <h1 class="font-bold text-lg tracking-tight">AudioRus <span class="text-xs bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded-full border border-indigo-500/30">Mic + Discord</span></h1>
+                    <p class="text-xs text-slate-400">Microphone & System Audio Translator</p>
                 </div>
             </div>
             <div id="statusBadge" class="flex items-center space-x-2 text-xs text-slate-400 bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700">
@@ -49,11 +49,11 @@
         <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
             <div class="flex items-center space-x-3 text-sm text-slate-300">
                 <div class="bg-indigo-500/10 text-indigo-400 p-3 rounded-xl border border-indigo-500/20">
-                    <i class="fa-solid fa-desktop text-lg"></i>
+                    <i class="fa-solid fa-microphone-lines text-lg"></i>
                 </div>
                 <div>
-                    <p class="font-semibold text-slate-200">Capture Desktop or Tab Audio</p>
-                    <p class="text-xs text-slate-400">Select "Tab" or "Entire Screen" & check <strong class="text-slate-300">"Share audio"</strong> in the browser prompt.</p>
+                    <p class="font-semibold text-slate-200">Capturing Mic + Discord/Tab Audio</p>
+                    <p class="text-xs text-slate-400">Select your Discord tab/window and make sure to check <strong class="text-slate-300">"Share tab audio"</strong>.</p>
                 </div>
             </div>
             <div class="flex items-center space-x-3 w-full sm:w-auto">
@@ -71,13 +71,13 @@
             <div class="bg-slate-800/60 border border-slate-700/80 rounded-2xl p-4 flex flex-col shadow-xl backdrop-blur">
                 <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-700/60">
                     <div class="flex items-center space-x-2">
-                        <span class="text-xs font-semibold uppercase tracking-wider text-indigo-400 bg-indigo-500/10 px-2.5 py-1 rounded-md border border-indigo-500/20">Live Audio Input</span>
-                        <span class="text-xs text-slate-400" id="audioLangTag">English (Speech)</span>
+                        <span class="text-xs font-semibold uppercase tracking-wider text-indigo-400 bg-indigo-500/10 px-2.5 py-1 rounded-md border border-indigo-500/20">Combined Audio Input</span>
+                        <span class="text-xs text-slate-400" id="audioLangTag">English (Mic + Discord)</span>
                     </div>
                     <button onclick="clearTranscript()" title="Clear" class="p-2 text-slate-400 hover:text-red-400 hover:bg-slate-700 rounded-lg transition"><i class="fa-solid fa-trash-can"></i></button>
                 </div>
                 <div id="sourceTranscript" class="w-full flex-grow text-slate-200 text-base leading-relaxed min-h-[180px] max-h-[300px] overflow-y-auto whitespace-pre-wrap break-words pr-2">
-                    <span class="text-slate-500 italic">Click "Start Listening", choose your audio source (enable "Share system audio"), and start playing audio or speaking...</span>
+                    <span class="text-slate-500 italic">Click "Start Listening", allow microphone access, select your Discord tab with "Share audio" checked, and start speaking...</span>
                 </div>
                 <div class="pt-3 mt-auto border-t border-slate-700/40 flex justify-between items-center text-xs text-slate-400">
                     <span id="speechStatus">Speech engine idle</span>
@@ -117,13 +117,13 @@
 
     <!-- App Logic Script -->
     <script>
-        let mediaStream = null;
+        let displayStream = null;
+        let micStream = null;
         let audioContext = null;
         let recognition = null;
         let isListening = false;
         let lastTranscribed = "";
 
-        // Check for Web Speech API support
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
         function toggleAudioCapture() {
@@ -141,9 +141,9 @@
             }
 
             try {
-                // Request screen/tab sharing with system audio capture
-                mediaStream = await navigator.mediaDevices.getDisplayMedia({
-                    video: true, // required by browser specs for getDisplayMedia
+                // 1. Capture System/Discord Audio via Tab Sharing
+                displayStream = await navigator.mediaDevices.getDisplayMedia({
+                    video: true,
                     audio: {
                         echoCancellation: false,
                         noiseSuppression: false,
@@ -151,15 +151,28 @@
                     }
                 });
 
-                // Route audio stream into audio context to prevent feedback loop
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                const sourceNode = audioContext.createMediaStreamSource(mediaStream);
-                const destination = audioContext.destination;
-                // Mute destination so it doesn't echo back loudly out of speakers if necessary, or let it play
-                // sourceNode.connect(destination); // Uncomment if you want to hear the audio while translating
+                // 2. Capture User's Microphone Audio
+                micStream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    },
+                    video: false
+                });
 
-                // Handle user stopping stream directly from browser UI bar
-                mediaStream.getVideoTracks()[0].onended = () => {
+                // 3. Combine both audio streams into a single mixed Web Audio Context
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const destination = audioContext.createMediaStreamDestination();
+
+                const displaySource = audioContext.createMediaStreamSource(displayStream);
+                const micSource = audioContext.createMediaStreamSource(micStream);
+
+                displaySource.connect(destination);
+                micSource.connect(destination);
+
+                // Handle user stopping screen share via browser bar
+                displayStream.getVideoTracks()[0].onended = () => {
                     stopAudioCapture();
                 };
 
@@ -168,8 +181,8 @@
                 updateUIState(true);
 
             } catch (err) {
-                console.error("Error capturing audio:", err);
-                alert("Audio capture was canceled or failed. Make sure to check 'Share audio' when prompted.");
+                console.error("Error capturing audio streams:", err);
+                alert("Audio capture was canceled or failed. Make sure to allow microphone access and check 'Share audio'.");
                 stopAudioCapture();
             }
         }
@@ -216,7 +229,7 @@
             recognition.onend = () => {
                 if (isListening) {
                     try {
-                        recognition.start(); // Restart if session times out naturally
+                        recognition.start();
                     } catch(e) {
                         console.log(e);
                     }
@@ -224,14 +237,18 @@
             };
 
             recognition.start();
-            document.getElementById('speechStatus').innerText = "Listening to audio stream...";
+            document.getElementById('speechStatus').innerText = "Listening to mic & Discord audio...";
         }
 
         function stopAudioCapture() {
             isListening = false;
-            if (mediaStream) {
-                mediaStream.getTracks().forEach(track => track.stop());
-                mediaStream = null;
+            if (displayStream) {
+                displayStream.getTracks().forEach(track => track.stop());
+                displayStream = null;
+            }
+            if (micStream) {
+                micStream.getTracks().forEach(track => track.stop());
+                micStream = null;
             }
             if (audioContext) {
                 audioContext.close();
@@ -246,7 +263,6 @@
 
         function updateUIState(active) {
             const btn = document.getElementById('toggleAudioBtn');
-            const btnText = document.getElementById('btnText');
             const statusDot = document.getElementById('statusDot');
             const statusText = document.getElementById('statusText');
             const speechStatus = document.getElementById('speechStatus');
@@ -255,7 +271,7 @@
                 btn.className = "w-full sm:w-auto bg-red-600 hover:bg-red-500 text-white font-medium text-xs px-5 py-2.5 rounded-xl shadow-lg shadow-red-600/30 transition flex items-center justify-center space-x-2";
                 btn.innerHTML = '<i class="fa-solid fa-stop"></i><span>Stop Listening</span>';
                 statusDot.className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
-                statusText.innerText = "Live Audio Active";
+                statusText.innerText = "Mic & Discord Active";
                 speechStatus.innerText = "Listening active";
             } else {
                 btn.className = "w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs px-5 py-2.5 rounded-xl shadow-lg shadow-indigo-600/30 transition flex items-center justify-center space-x-2";
