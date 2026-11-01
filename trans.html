@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Robust Live Translator (English ⇄ Russian)</title>
+    <!-- Favicon fix to eliminate 404 error -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌐</text></svg>">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -31,7 +33,7 @@
                     <i class="fa-solid fa-shield-halved text-xl"></i>
                 </div>
                 <div>
-                    <h1 class="font-bold text-lg tracking-tight">RobustTrans <span class="text-xs bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded-full border border-indigo-500/30">v1.21 Diagnostic</span></h1>
+                    <h1 class="font-bold text-lg tracking-tight">RobustTrans <span class="text-xs bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded-full border border-indigo-500/30">v1.22</span></h1>
                     <p class="text-xs text-slate-400">Cross-Browser Dual-Way Auto-Translator</p>
                 </div>
             </div>
@@ -45,21 +47,34 @@
     <!-- Main Content -->
     <main class="max-w-5xl mx-auto px-4 py-8 w-full flex-grow space-y-6">
         
-        <!-- Controls & Browser Diagnostic Banner -->
+        <!-- Controls & Manual Test Fallback Banner -->
         <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-5 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl">
-            <div class="flex items-center space-x-3 text-sm text-slate-300">
+            <div class="flex items-center space-x-3 text-sm text-slate-300 w-full md:w-auto">
                 <div class="bg-indigo-500/10 text-indigo-400 p-3 rounded-xl border border-indigo-500/20 shrink-0">
                     <i class="fa-solid fa-microphone-lines text-lg"></i>
                 </div>
                 <div>
-                    <p class="font-semibold text-slate-200">Forced Audio Stream Capture</p>
-                    <p class="text-xs text-slate-400" id="engineStatusLabel">Click start and speak clearly into your default mic...</p>
+                    <p class="font-semibold text-slate-200">Voice or Manual Translation</p>
+                    <p class="text-xs text-slate-400">Use voice recognition or type below to test translations instantly.</p>
                 </div>
             </div>
             <div class="flex items-center space-x-3 w-full md:w-auto justify-end">
-                <button id="toggleAudioBtn" onclick="toggleAudioCapture()" class="w-full md:w-auto bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs px-6 py-3 rounded-xl shadow-lg shadow-indigo-600/30 transition flex items-center justify-center space-x-2">
+                <button id="toggleAudioBtn" onclick="toggleAudioCapture()" class="w-full md:w-auto bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs px-6 py-3 rounded-xl shadow-lg shadow-indigo-600/30 transition flex items-center justify-center space-x-2 shrink-0">
                     <i class="fa-solid fa-play"></i>
                     <span id="btnText">Start Listening</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Manual Input Box (Guaranteed working fallback) -->
+        <div class="bg-slate-800/60 border border-slate-700/80 rounded-2xl p-4 shadow-xl">
+            <label for="manualInput" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Manual Text Input (Instant Translate Test)</label>
+            <div class="flex gap-2">
+                <input type="text" id="manualInput" placeholder="Type English or Russian here and press Enter..." 
+                    class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
+                    onkeydown="if(event.key === 'Enter') translateManualText()">
+                <button onclick="translateManualText()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-xl text-xs font-medium transition shrink-0">
+                    Translate
                 </button>
             </div>
         </div>
@@ -71,17 +86,17 @@
             <div class="bg-slate-800/60 border border-slate-700/80 rounded-2xl p-4 flex flex-col shadow-xl backdrop-blur">
                 <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-700/60">
                     <div class="flex items-center space-x-2">
-                        <span class="text-xs font-semibold uppercase tracking-wider text-indigo-400 bg-indigo-500/10 px-2.5 py-1 rounded-md border border-indigo-500/20">Detected Speech</span>
+                        <span class="text-xs font-semibold uppercase tracking-wider text-indigo-400 bg-indigo-500/10 px-2.5 py-1 rounded-md border border-indigo-500/20">Source Text</span>
                         <span class="text-xs text-slate-400" id="detectedLangTag">Waiting...</span>
                     </div>
                     <button onclick="clearTranscript()" title="Clear" class="p-2 text-slate-400 hover:text-red-400 hover:bg-slate-700 rounded-lg transition"><i class="fa-solid fa-trash-can"></i></button>
                 </div>
-                <div id="sourceTranscript" class="w-full flex-grow text-slate-200 text-base leading-relaxed min-h-[180px] max-h-[300px] overflow-y-auto whitespace-pre-wrap break-words pr-2">
-                    <span class="text-slate-500 italic">Click "Start Listening" and speak in English or Russian...</span>
+                <div id="sourceTranscript" class="w-full flex-grow text-slate-200 text-base leading-relaxed min-h-[150px] max-h-[250px] overflow-y-auto whitespace-pre-wrap break-words pr-2">
+                    <span class="text-slate-500 italic">Speak into your mic or type above...</span>
                 </div>
                 <div class="pt-3 mt-auto border-t border-slate-700/40 flex justify-between items-center text-xs text-slate-400">
                     <span id="speechStatus">Engine idle</span>
-                    <button onclick="copyToClipboard('sourceTranscript')" class="hover:text-white flex items-center space-x-1"><i class="fa-regular fa-copy"></i> <span>Copy transcript</span></button>
+                    <button onclick="copyToClipboard('sourceTranscript')" class="hover:text-white flex items-center space-x-1"><i class="fa-regular fa-copy"></i> <span>Copy text</span></button>
                 </div>
             </div>
 
@@ -97,7 +112,7 @@
                     </div>
                     <button onclick="speakOutput()" title="Listen to Translation" class="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"><i class="fa-solid fa-volume-high"></i></button>
                 </div>
-                <div id="targetText" class="w-full flex-grow text-slate-100 text-base leading-relaxed min-h-[180px] max-h-[300px] overflow-y-auto select-all whitespace-pre-wrap break-words pr-2">
+                <div id="targetText" class="w-full flex-grow text-slate-100 text-base leading-relaxed min-h-[150px] max-h-[250px] overflow-y-auto select-all whitespace-pre-wrap break-words pr-2">
                     <span class="text-slate-500">Translation will appear here...</span>
                 </div>
                 <div class="pt-3 mt-auto border-t border-slate-700/40 flex justify-between items-center text-xs text-slate-400">
@@ -114,7 +129,7 @@
     <footer class="border-t border-slate-800 bg-slate-900/90 backdrop-blur py-3 px-4 text-xs text-slate-400 sticky bottom-0 z-40">
         <div class="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
             <div class="flex items-center space-x-3">
-                <span class="bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 px-2.5 py-1 rounded-md font-mono font-bold tracking-wide">v1.21</span>
+                <span class="bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 px-2.5 py-1 rounded-md font-mono font-bold tracking-wide">v1.22</span>
                 <div class="flex items-center space-x-2">
                     <span id="updateDot" class="w-2 h-2 rounded-full bg-slate-500"></span>
                     <span id="bottomUpdateText">Status: Initialized — Ready</span>
@@ -151,7 +166,6 @@
             }
 
             try {
-                // Explicitly request audio track so browser binds to default hardware input
                 micStream = await navigator.mediaDevices.getUserMedia({ 
                     audio: { echoCancellation: true, noiseSuppression: true } 
                 });
@@ -172,7 +186,7 @@
                 recognition = new SpeechRecognitionAPI();
                 recognition.continuous = true;
                 recognition.interimResults = true;
-                recognition.lang = 'ru-RU'; // Universal catcher for Cyrillic and multi-language phonetic inputs
+                recognition.lang = 'ru-RU';
 
                 let finalTranscript = "";
 
@@ -189,7 +203,7 @@
                     const fullText = (finalTranscript + interim).trim();
                     if (fullText) {
                         const transcriptDiv = document.getElementById('sourceTranscript');
-                        if (transcriptDiv.innerText.includes('Click "Start Listening"')) {
+                        if (transcriptDiv.innerText.includes('Speak into your mic')) {
                             transcriptDiv.innerText = "";
                         }
                         transcriptDiv.innerText = fullText;
@@ -209,13 +223,8 @@
                 };
 
                 recognition.onend = () => {
-                    // Auto-restart loop to keep the session alive if it times out or encounters silence
                     if (isListening) {
-                        try {
-                            recognition.start();
-                        } catch(e) {
-                            console.log("Restart loop caught exception:", e);
-                        }
+                        try { recognition.start(); } catch(e) {}
                     }
                 };
 
@@ -227,6 +236,15 @@
                 console.error("Recognition init error:", e);
                 setBottomStatus("Recognition start failed.", "error");
             }
+        }
+
+        function translateManualText() {
+            const inputVal = document.getElementById('manualInput').value.trim();
+            if (!inputVal) return;
+
+            document.getElementById('sourceTranscript').innerText = inputVal;
+            detectAndTranslate(inputVal);
+            document.getElementById('manualInput').value = "";
         }
 
         function detectLanguage(text) {
@@ -298,13 +316,13 @@
             const speechStatus = document.getElementById('speechStatus');
 
             if (active) {
-                btn.className = "w-full md:w-auto bg-red-600 hover:bg-red-500 text-white font-medium text-xs px-6 py-3 rounded-xl shadow-lg shadow-red-600/30 transition flex items-center justify-center space-x-2";
+                btn.className = "w-full md:w-auto bg-red-600 hover:bg-red-500 text-white font-medium text-xs px-6 py-3 rounded-xl shadow-lg shadow-red-600/30 transition flex items-center justify-center space-x-2 shrink-0";
                 btn.innerHTML = '<i class="fa-solid fa-stop"></i><span>Stop Listening</span>';
                 statusDot.className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
                 statusText.innerText = "Listening Active";
                 speechStatus.innerText = "Active listener running";
             } else {
-                btn.className = "w-full md:w-auto bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs px-6 py-3 rounded-xl shadow-lg shadow-indigo-600/30 transition flex items-center justify-center space-x-2";
+                btn.className = "w-full md:w-auto bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs px-6 py-3 rounded-xl shadow-lg shadow-indigo-600/30 transition flex items-center justify-center space-x-2 shrink-0";
                 btn.innerHTML = '<i class="fa-solid fa-play"></i><span>Start Listening</span>';
                 statusDot.className = "w-2 h-2 rounded-full bg-slate-500";
                 statusText.innerText = "System Ready";
@@ -329,7 +347,7 @@
         }
 
         function clearTranscript() {
-            document.getElementById('sourceTranscript').innerHTML = '<span class="text-slate-500 italic">Session cleared...</span>';
+            document.getElementById('sourceTranscript').innerHTML = '<span class="text-slate-500 italic">Speak into your mic or type above...</span>';
             document.getElementById('targetText').innerHTML = '<span class="text-slate-500">Translation will appear here...</span>';
             document.getElementById('detectedLangTag').innerText = 'Waiting...';
             document.getElementById('wordCount').innerText = '0 words';
@@ -339,7 +357,7 @@
 
         function copyToClipboard(elementId) {
             const textToCopy = document.getElementById(elementId).innerText;
-            if (!textToCopy || textToCopy.includes('Click "Start Listening"') || textToCopy.includes('Translation will appear here')) return;
+            if (!textToCopy || textToCopy.includes('Speak into your mic') || textToCopy.includes('Translation will appear here')) return;
 
             navigator.clipboard.writeText(textToCopy).then(() => {
                 setBottomStatus("Copied to clipboard!", "success");
