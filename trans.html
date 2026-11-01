@@ -31,7 +31,7 @@
                     <i class="fa-solid fa-shield-halved text-xl"></i>
                 </div>
                 <div>
-                    <h1 class="font-bold text-lg tracking-tight">RobustTrans <span class="text-xs bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded-full border border-indigo-500/30">Multi-Engine</span></h1>
+                    <h1 class="font-bold text-lg tracking-tight">RobustTrans <span class="text-xs bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded-full border border-indigo-500/30">v1.21 Diagnostic</span></h1>
                     <p class="text-xs text-slate-400">Cross-Browser Dual-Way Auto-Translator</p>
                 </div>
             </div>
@@ -49,11 +49,11 @@
         <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-5 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl">
             <div class="flex items-center space-x-3 text-sm text-slate-300">
                 <div class="bg-indigo-500/10 text-indigo-400 p-3 rounded-xl border border-indigo-500/20 shrink-0">
-                    <i class="fa-solid fa-microchip text-lg"></i>
+                    <i class="fa-solid fa-microphone-lines text-lg"></i>
                 </div>
                 <div>
-                    <p class="font-semibold text-slate-200">Multi-Engine Fallback Active</p>
-                    <p class="text-xs text-slate-400" id="engineStatusLabel">Checking speech API compatibility...</p>
+                    <p class="font-semibold text-slate-200">Forced Audio Stream Capture</p>
+                    <p class="text-xs text-slate-400" id="engineStatusLabel">Click start and speak clearly into your default mic...</p>
                 </div>
             </div>
             <div class="flex items-center space-x-3 w-full md:w-auto justify-end">
@@ -77,7 +77,7 @@
                     <button onclick="clearTranscript()" title="Clear" class="p-2 text-slate-400 hover:text-red-400 hover:bg-slate-700 rounded-lg transition"><i class="fa-solid fa-trash-can"></i></button>
                 </div>
                 <div id="sourceTranscript" class="w-full flex-grow text-slate-200 text-base leading-relaxed min-h-[180px] max-h-[300px] overflow-y-auto whitespace-pre-wrap break-words pr-2">
-                    <span class="text-slate-500 italic">Click "Start Listening", allow microphone access, and speak in English or Russian...</span>
+                    <span class="text-slate-500 italic">Click "Start Listening" and speak in English or Russian...</span>
                 </div>
                 <div class="pt-3 mt-auto border-t border-slate-700/40 flex justify-between items-center text-xs text-slate-400">
                     <span id="speechStatus">Engine idle</span>
@@ -110,15 +110,14 @@
 
     </main>
 
-    <!-- Bottom Live Update Bar with Version Badge on Bottom-Left -->
+    <!-- Bottom Live Update Bar -->
     <footer class="border-t border-slate-800 bg-slate-900/90 backdrop-blur py-3 px-4 text-xs text-slate-400 sticky bottom-0 z-40">
         <div class="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
             <div class="flex items-center space-x-3">
-                <!-- Version Badge (Bottom Left) -->
-                <span class="bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 px-2.5 py-1 rounded-md font-mono font-bold tracking-wide">v1.20</span>
+                <span class="bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 px-2.5 py-1 rounded-md font-mono font-bold tracking-wide">v1.21</span>
                 <div class="flex items-center space-x-2">
                     <span id="updateDot" class="w-2 h-2 rounded-full bg-slate-500"></span>
-                    <span id="bottomUpdateText">Status: System Initialized — Ready for Input</span>
+                    <span id="bottomUpdateText">Status: Initialized — Ready</span>
                 </div>
             </div>
             <div class="text-slate-500">
@@ -134,21 +133,8 @@
         let isListening = false;
         let lastTranscribed = "";
         let currentTargetLang = 'ru';
-        let restartAttempts = 0;
 
-        const SpeechRecognitionAPI = window.SpeechRecognition || 
-                                     window.webkitSpeechRecognition || 
-                                     window.mozSpeechRecognition || 
-                                     window.msSpeechRecognition;
-
-        window.addEventListener('DOMContentLoaded', () => {
-            if (SpeechRecognitionAPI) {
-                document.getElementById('engineStatusLabel').innerText = "Primary Speech API detected and ready.";
-            } else {
-                document.getElementById('engineStatusLabel').innerText = "Warning: Speech API not supported in this browser. Please use Chrome or Opera GX.";
-                setBottomStatus("Speech recognition API unavailable in current browser.", "error");
-            }
-        });
+        const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
 
         function toggleAudioCapture() {
             if (!isListening) {
@@ -160,39 +146,33 @@
 
         async function startAudioCapture() {
             if (!SpeechRecognitionAPI) {
-                alert("Speech Recognition is not supported by your browser. Please use Google Chrome, Opera GX, or Microsoft Edge.");
+                alert("Speech Recognition is not supported in this browser. Please use Google Chrome or Microsoft Edge.");
                 return;
             }
 
             try {
-                micStream = await navigator.mediaDevices.getUserMedia({
-                    audio: {
-                        echoCancellation: true,
-                        noiseSuppression: true,
-                        autoGainControl: true
-                    },
-                    video: false
+                // Explicitly request audio track so browser binds to default hardware input
+                micStream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: { echoCancellation: true, noiseSuppression: true } 
                 });
 
-                initRobustRecognition();
+                initRecognition();
                 isListening = true;
                 updateUIState(true);
-                restartAttempts = 0;
-
             } catch (err) {
-                console.error("Microphone access error:", err);
-                alert("Microphone access was denied or failed. Please check browser permissions in your address bar.");
+                console.error("Mic access error:", err);
+                alert("Could not open microphone. Please check browser address bar permissions.");
                 stopAudioCapture();
-                setBottomStatus("Microphone access error.", "error");
+                setBottomStatus("Microphone access failed.", "error");
             }
         }
 
-        function initRobustRecognition() {
+        function initRecognition() {
             try {
                 recognition = new SpeechRecognitionAPI();
                 recognition.continuous = true;
                 recognition.interimResults = true;
-                recognition.lang = 'ru-RU';
+                recognition.lang = 'ru-RU'; // Universal catcher for Cyrillic and multi-language phonetic inputs
 
                 let finalTranscript = "";
 
@@ -223,33 +203,29 @@
                 };
 
                 recognition.onerror = (event) => {
-                    console.warn("Speech recognition warning/error:", event.error);
-                    document.getElementById('speechStatus').innerText = `Status: ${event.error}`;
-                    
-                    if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-                        stopAudioCapture();
-                        alert("Microphone permission blocked by browser.");
-                    }
+                    console.warn("Speech API error event:", event.error);
+                    document.getElementById('speechStatus').innerText = `Error: ${event.error}`;
+                    setBottomStatus(`Speech error: ${event.error}`, "error");
                 };
 
                 recognition.onend = () => {
-                    if (isListening && restartAttempts < 10) {
-                        restartAttempts++;
+                    // Auto-restart loop to keep the session alive if it times out or encounters silence
+                    if (isListening) {
                         try {
                             recognition.start();
                         } catch(e) {
-                            console.log("Auto-restart recovery triggered", e);
+                            console.log("Restart loop caught exception:", e);
                         }
                     }
                 };
 
                 recognition.start();
-                document.getElementById('speechStatus').innerText = "Listening active...";
+                document.getElementById('speechStatus').innerText = "Listening actively...";
                 setBottomStatus("Listening active. Speak into your microphone...", "active");
 
             } catch (e) {
-                console.error("Failed to initialize speech engine:", e);
-                setBottomStatus("Engine initialization failed.", "error");
+                console.error("Recognition init error:", e);
+                setBottomStatus("Recognition start failed.", "error");
             }
         }
 
@@ -275,7 +251,7 @@
 
             const loader = document.getElementById('loader');
             loader.classList.remove('hidden');
-            setBottomStatus("Translating live speech...", "active");
+            setBottomStatus("Translating...", "active");
 
             const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${langPair}`;
 
@@ -292,14 +268,12 @@
 
                     const words = translated.trim() ? translated.trim().split(/\s+/).length : 0;
                     document.getElementById('wordCount').innerText = `${words} words`;
-
-                    const timeStr = new Date().toLocaleTimeString();
-                    setBottomStatus(`Updated successfully at ${timeStr} (${detectedLang.toUpperCase()} ➔ ${currentTargetLang.toUpperCase()})`, "success");
+                    setBottomStatus(`Translated successfully (${detectedLang.toUpperCase()} ➔ ${currentTargetLang.toUpperCase()})`, "success");
                 }
             } catch (error) {
                 console.error('Translation network error:', error);
                 loader.classList.add('hidden');
-                setBottomStatus("Translation network error occurred.", "error");
+                setBottomStatus("Translation network error.", "error");
             }
         }
 
@@ -314,7 +288,7 @@
                 recognition = null;
             }
             updateUIState(false);
-            setBottomStatus("Listening stopped. System ready.", "idle");
+            setBottomStatus("Stopped. Ready.", "idle");
         }
 
         function updateUIState(active) {
@@ -360,7 +334,7 @@
             document.getElementById('detectedLangTag').innerText = 'Waiting...';
             document.getElementById('wordCount').innerText = '0 words';
             lastTranscribed = "";
-            setBottomStatus("Transcript cleared.", "idle");
+            setBottomStatus("Cleared.", "idle");
         }
 
         function copyToClipboard(elementId) {
@@ -368,7 +342,7 @@
             if (!textToCopy || textToCopy.includes('Click "Start Listening"') || textToCopy.includes('Translation will appear here')) return;
 
             navigator.clipboard.writeText(textToCopy).then(() => {
-                setBottomStatus("Copied text to clipboard!", "success");
+                setBottomStatus("Copied to clipboard!", "success");
             });
         }
 
